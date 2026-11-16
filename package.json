@@ -1,0 +1,31 @@
+{
+  "name": "khalsa_school_capstone",
+  "version": "1.0.0",
+  "description": "The SGSS Khalsa School Events Center is a centralized, mobile-friendly web application built for the Sri Guru Singh Sabha Khalsa School community. This features an events center with image uploading and a photo gallery, flyer creation for admins, and langar seva booking.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@google/genai": "^3.3.0",
+    "archiver": "^7.0.1",
+    "browser-image-compression": "^2.0.2",
+    "cors": "^2.8.6",
+    "date-fns": "^4.4.0",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "html-to-image": "^1.11.13",
+    "multer": "^2.5.0",
+    "mysql2": "^3.24.6",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "sequelize": "^6.37.8",
+    "sharp": "^0.35.5"
+  }
+}
