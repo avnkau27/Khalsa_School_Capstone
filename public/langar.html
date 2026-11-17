@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Langar Seva | SGSS Khalsa School</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen" data-page="langar">
+  <header class="site-navbar">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <a href="/" class="font-bold text-lg">SGSS Khalsa School</a>
+      <div class="flex flex-wrap items-center gap-1">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/events.html">Events</a>
+        <a class="nav-link active" href="/langar.html">Langar Seva</a>
+        <a id="flyer-nav-link" class="nav-link hidden" href="/flyer.html">AI Flyer Maker</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="nav-user" class="hidden text-xs text-indigo-100"></span>
+        <button id="nav-login" class="px-3 py-1.5 rounded-lg bg-white text-indigo-900 text-sm font-semibold">Login</button>
+        <button id="nav-role" class="hidden px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-semibold">Switch Role</button>
+        <button id="nav-logout" class="hidden px-3 py-1.5 rounded-lg border border-indigo-300 text-xs font-semibold">Logout</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+      <h1 class="text-3xl font-bold text-indigo-950 mb-2">Langar Seva Sunday Schedule</h1>
+      <p class="text-sm text-slate-500 mb-6">Upcoming Sundays available for Langar Seva.</p>
+      <ul id="sundays-list" class="space-y-3"></ul>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
