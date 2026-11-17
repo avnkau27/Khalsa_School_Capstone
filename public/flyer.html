@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Flyer Maker | SGSS Khalsa School</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/vendor/html-to-image/dist/html-to-image.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen" data-page="flyer">
+  <header class="site-navbar">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <a href="/" class="font-bold text-lg">SGSS Khalsa School</a>
+      <div class="flex flex-wrap items-center gap-1">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/events.html">Events</a>
+        <a class="nav-link" href="/langar.html">Langar Seva</a>
+        <a id="flyer-nav-link" class="nav-link active hidden" href="/flyer.html">AI Flyer Maker</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="nav-user" class="hidden text-xs text-indigo-100"></span>
+        <button id="nav-login" class="px-3 py-1.5 rounded-lg bg-white text-indigo-900 text-sm font-semibold">Login</button>
+        <button id="nav-role" class="hidden px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-semibold">Switch Role</button>
+        <button id="nav-logout" class="hidden px-3 py-1.5 rounded-lg border border-indigo-300 text-xs font-semibold">Logout</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+        <div>
+          <h1 class="text-3xl font-bold text-indigo-950">AI Event Flyer Generator</h1>
+          <p class="text-sm text-slate-500 mt-1">Generate a flyer with Gemini and export it as PNG.</p>
+        </div>
+        <button id="download-flyer-btn" type="button" class="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold">Download Flyer as PNG</button>
+      </div>
+      <form id="flyer-form" class="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 mb-5">
+        <input id="flyer-event-name" type="text" placeholder="Event name" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        <input id="flyer-event-date" type="text" placeholder="Date and time" required class="px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+        <button id="generate-flyer-btn" type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">Generate AI Flyer</button>
+      </form>
+      <div id="flyer-preview" class="flyer-preview p-6 border-2 border-dashed border-slate-300 rounded-xl bg-amber-50">
+        <p class="text-sm text-slate-500">Enter an event name and date to generate a flyer preview.</p>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

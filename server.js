@@ -19,8 +19,6 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
-app.use(express.static('public'));
-app.use('/vendor', express.static('node_modules'));
 
 // Session & Passport Google OAuth 2.0 setup
 app.use(
@@ -67,6 +65,16 @@ passport.deserializeUser(async (id, done) => {
     done(err, null);
   }
 });
+
+app.get('/flyer.html', (req, res, next) => {
+  if (!req.isAuthenticated() || req.user.role !== 'admin') {
+    return res.redirect('/');
+  }
+  next();
+});
+
+app.use(express.static('public'));
+app.use('/vendor', express.static('node_modules'));
 
 // S3 Client (Cloudflare R2 or Local MinIO) & Gemini AI Client
 const s3 = new S3Client({
