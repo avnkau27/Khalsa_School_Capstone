@@ -138,14 +138,66 @@ app.get('/api/events', async (req, res) => {
   const where = canManageUnpublishedEvents(req) ? {} : { isPublished: true };
   const events = await Event.findAll({
     where,
-    attributes: ['id', 'eventName', 'description', 'location', 'dateStart', 'dateEnd'],
+    attributes: ['id', 'eventName', 'description', 'location', 'dateStart', 'dateEnd', 'isPublished'],
     order: [['dateStart', 'ASC']],
   });
   res.json(events);
 });
 
+app.get('/api/events/:id', async (req, res) => {
+  const eventId = Number(req.params.id);
+  if (!Number.isInteger(eventId) || eventId < 1) {
+    return res.status(400).json({ error: 'A valid event id is required.' });
+  }
+  const event = await Event.findByPk(eventId);
+  if (!event || (!event.isPublished && !canManageUnpublishedEvents(req))) {
+    return res.status(404).json({ error: 'Event not found.' });
+  }
+  res.json(event);
+});
+
+app.post('/api/events', requireAdmin, async (req, res) => {
+  const eventName = typeof req.body.eventName === 'string' ? req.body.eventName.trim() : '';
+  const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+  const location = typeof req.body.location === 'string' ? req.body.location.trim() : '';
+  const dateStart = typeof req.body.dateStart === 'string' ? new Date(req.body.dateStart) : new Date(NaN);
+  const dateEnd = typeof req.body.dateEnd === 'string' ? new Date(req.body.dateEnd) : new Date(NaN);
+
+  if (!eventName || eventName.length > 255) {
+    return res.status(400).json({ error: 'Event name is required and must be 255 characters or fewer.' });
+  }
+  if (location.length > 255) {
+    return res.status(400).json({ error: 'Location must be 255 characters or fewer.' });
+  }
+  if (Number.isNaN(dateStart.getTime()) || Number.isNaN(dateEnd.getTime()) || dateEnd <= dateStart) {
+    return res.status(400).json({ error: 'Enter valid start and end dates; the end must be after the start.' });
+  }
+  if (typeof req.body.isPublished !== 'boolean') {
+    return res.status(400).json({ error: 'isPublished must be true or false.' });
+  }
+
+  const event = await Event.create({
+    eventName,
+    description: description || null,
+    location: location || null,
+    dateStart,
+    dateEnd,
+    isPublished: req.body.isPublished,
+    createdBy: req.user.id,
+  });
+  res.status(201).json(event);
+});
+
 app.get('/api/photos', async (req, res) => {
   const canApprove = isPhotoApprover(req);
+  const where = canApprove ? {} : { status: 'Approved' };
+  if (req.query.eventId !== undefined) {
+    const eventId = Number(req.query.eventId);
+    if (!Number.isInteger(eventId) || eventId < 1) {
+      return res.status(400).json({ error: 'A valid eventId is required.' });
+    }
+    where.eventId = eventId;
+  }
   const eventInclude = {
     model: Event,
     as: 'event',
@@ -153,7 +205,7 @@ app.get('/api/photos', async (req, res) => {
   };
   if (!canApprove) eventInclude.where = { isPublished: true };
   const photos = await Photo.findAll({
-    where: canApprove ? {} : { status: 'Approved' },
+    where,
     include: [eventInclude],
     order: [['createdAt', 'DESC']],
   });
@@ -250,16 +302,31 @@ app.post('/api/photos/:id/approve', requireRole('Admin', 'Approver'), async (req
 // Bulk ZIP download using archiver
 app.get('/api/photos/zip', async (req, res) => {
   const { default: archiver } = await import('archiver');
+  const where = { status: 'Approved' };
+  const eventInclude = {
+    model: Event,
+    as: 'event',
+    attributes: [],
+  };
+  if (req.query.eventId !== undefined) {
+    const eventId = Number(req.query.eventId);
+    if (!Number.isInteger(eventId) || eventId < 1) {
+      return res.status(400).json({ error: 'A valid eventId is required.' });
+    }
+    const event = await Event.findByPk(eventId);
+    if (!event || (!event.isPublished && !canManageUnpublishedEvents(req))) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    where.eventId = eventId;
+  }
+  if (!canManageUnpublishedEvents(req)) eventInclude.where = { isPublished: true };
   const photos = await Photo.findAll({
-    where: { status: 'Approved' },
-    include: [{
-      model: Event,
-      as: 'event',
-      where: { isPublished: true },
-      attributes: [],
-    }],
+    where,
+    include: [eventInclude],
   });
-  res.attachment('khalsa-school-photos.zip');
+  res.attachment(req.query.eventId
+    ? `event-${req.query.eventId}-photos.zip`
+    : 'khalsa-school-photos.zip');
   const archive = archiver('zip');
   archive.pipe(res);
 

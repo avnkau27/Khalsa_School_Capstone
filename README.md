@@ -125,7 +125,7 @@ Once the terminal displays `Server running at http://localhost:3000`, open `http
 ## Feature Walkthrough
 
 1. **Authentication (Google OAuth 2.0 & Sessions):** Click **Login with Google** in Box 1 to sign in, verify your profile displays in the header, and test **Logout**.
-2. **Database Read/Write & Cloudflare R2 Pipeline:** Select an event and upload a photo. The browser compresses the image, Express converts it to `.webp`, stores it in Cloudflare R2, and saves its event, uploader, and pending-approval metadata in MySQL.
+2. **Events & Photo Gallery:** Admins can create events from the Events page. Select an event to open its photo page; uploads are compressed, stored in Cloudflare R2, and saved with the event, uploader, and pending-approval metadata in MySQL.
 3. **Role-Based Access Control (RBAC):** New accounts default to `Member`. `Admin` and `Approver` accounts can approve uploaded photos; only `Admin` accounts can delete photos or generate flyers. Public galleries and ZIP exports include approved photos from published events only.
 4. **Bulk ZIP Export:** Click **Download All as ZIP** to stream a `.zip` archive of approved photos from published events.
 5. **AI Flyer Generator & PNG Export:** Enter an event name and date in Box 4 to generate HTML flyer markup via `@google/genai` (`gemini-3.8-flash-lite`), then click **Download Flyer as PNG** to export the preview using `html-to-image`.
