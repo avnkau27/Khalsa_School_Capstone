@@ -10,7 +10,7 @@ const sharp = require('sharp');
 //const archiver = require('archiver');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { GoogleGenAI } = require('@google/genai');
-const { sequelize, User, Photo } = require('./db');
+const { sequelize, User, Event, Photo } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,9 +45,10 @@ passport.use(
           defaults: {
             email: profile.emails[0].value,
             name: profile.displayName,
-            role: 'guest',
+            role: 'Member',
           },
         });
+        if (!user.isActive) return done(null, false);
         return done(null, user);
       } catch (err) {
         return done(err, null);
@@ -59,7 +60,7 @@ passport.use(
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await User.findByPk(id);
+    const user = await User.findOne({ where: { id, isActive: true } });
     done(null, user);
   } catch (err) {
     done(err, null);
@@ -67,7 +68,7 @@ passport.deserializeUser(async (id, done) => {
 });
 
 app.get('/flyer.html', (req, res, next) => {
-  if (!req.isAuthenticated() || req.user.role !== 'admin') {
+  if (!req.isAuthenticated() || req.user.role !== 'Admin') {
     return res.redirect('/');
   }
   next();
@@ -91,9 +92,26 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const upload = multer({ storage: multer.memoryStorage() });
 
 // RBAC Middleware
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.isAuthenticated() || !roles.includes(req.user.role)) {
+      return res.status(403).json({ error: `Access denied. Required role: ${roles.join(' or ')}.` });
+    }
+    next();
+  };
+}
+
+function isPhotoApprover(req) {
+  return req.isAuthenticated() && ['Admin', 'Approver'].includes(req.user.role);
+}
+
+function canManageUnpublishedEvents(req) {
+  return isPhotoApprover(req);
+}
+
 function requireAdmin(req, res, next) {
-  if (!req.isAuthenticated() || req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Access Denied: Admin role required.' });
+  if (!req.isAuthenticated() || req.user.role !== 'Admin') {
+    return res.status(403).json({ error: 'Access denied. Admin role required.' });
   }
   next();
 }
@@ -115,23 +133,53 @@ app.get('/api/me', (req, res) => {
   res.json({ user: req.user || null });
 });
 
-// Toggle role for easy RBAC demo in front of your teachers
-app.post('/api/me/toggle-role', async (req, res) => {
-  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Log in first' });
-  req.user.role = req.user.role === 'admin' ? 'guest' : 'admin';
-  await req.user.save();
-  res.json({ user: req.user });
+// --- PHOTO UPLOAD, DB READ/WRITE, & ZIP EXPORT ROUTES ---
+app.get('/api/events', async (req, res) => {
+  const where = canManageUnpublishedEvents(req) ? {} : { isPublished: true };
+  const events = await Event.findAll({
+    where,
+    attributes: ['id', 'eventName', 'description', 'location', 'dateStart', 'dateEnd'],
+    order: [['dateStart', 'ASC']],
+  });
+  res.json(events);
 });
 
-// --- PHOTO UPLOAD, DB READ/WRITE, & ZIP EXPORT ROUTES ---
 app.get('/api/photos', async (req, res) => {
-  const photos = await Photo.findAll({ order: [['createdAt', 'DESC']] });
+  const canApprove = isPhotoApprover(req);
+  const eventInclude = {
+    model: Event,
+    as: 'event',
+    attributes: ['id', 'eventName', 'isPublished'],
+  };
+  if (!canApprove) eventInclude.where = { isPublished: true };
+  const photos = await Photo.findAll({
+    where: canApprove ? {} : { status: 'Approved' },
+    include: [eventInclude],
+    order: [['createdAt', 'DESC']],
+  });
   res.json(photos);
 });
 
 app.post('/api/photos', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+    const eventId = Number(req.body.eventId);
+    if (!Number.isInteger(eventId) || eventId < 1) {
+      return res.status(400).json({ error: 'A valid eventId is required.' });
+    }
+    const title = req.body.title?.trim() || null;
+    const guestName = req.isAuthenticated() ? null : (req.body.guestName?.trim() || null);
+    if (title && title.length > 255) {
+      return res.status(400).json({ error: 'Photo title must be 255 characters or fewer.' });
+    }
+    if (guestName && guestName.length > 150) {
+      return res.status(400).json({ error: 'Guest name must be 150 characters or fewer.' });
+    }
+
+    const event = await Event.findByPk(eventId);
+    if (!event || (!event.isPublished && !canManageUnpublishedEvents(req))) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
 
     // Convert image to WebP using sharp
     const webpBuffer = await sharp(req.file.buffer).resize(800).webp({ quality: 80 }).toBuffer();
@@ -149,9 +197,13 @@ app.post('/api/photos', upload.single('image'), async (req, res) => {
 
     // Save metadata to MySQL via Sequelize
     const photo = await Photo.create({
-      title: req.body.title || 'Untitled Event Photo',
+      title,
       s3Key,
       url: `/api/photos/file/${encodeURIComponent(s3Key)}`,
+      eventId,
+      uploaderId: req.isAuthenticated() ? req.user.id : null,
+      guestName,
+      status: 'Pending',
     });
 
     res.status(201).json(photo);
@@ -183,10 +235,30 @@ app.delete('/api/photos/:id', requireAdmin, async (req, res) => {
   res.json({ message: 'Photo deleted by admin' });
 });
 
+app.post('/api/photos/:id/approve', requireRole('Admin', 'Approver'), async (req, res) => {
+  const photo = await Photo.findByPk(req.params.id);
+  if (!photo) return res.status(404).json({ error: 'Photo not found.' });
+  if (photo.status !== 'Approved') {
+    photo.status = 'Approved';
+    photo.approverId = req.user.id;
+    photo.approvedAt = new Date();
+    await photo.save();
+  }
+  res.json({ message: 'Photo approved.', photo });
+});
+
 // Bulk ZIP download using archiver
 app.get('/api/photos/zip', async (req, res) => {
   const { default: archiver } = await import('archiver');
-  const photos = await Photo.findAll();
+  const photos = await Photo.findAll({
+    where: { status: 'Approved' },
+    include: [{
+      model: Event,
+      as: 'event',
+      where: { isPublished: true },
+      attributes: [],
+    }],
+  });
   res.attachment('khalsa-school-photos.zip');
   const archive = archiver('zip');
   archive.pipe(res);
@@ -223,9 +295,12 @@ app.post('/api/flyer', requireAdmin, async (req, res) => {
   res.status(503).json({ error: 'All Gemini free-tier models are temporarily busy. Please try again in a few seconds.' });
 });
 
-// Sync MySQL tables and start server
-sequelize.sync().then(() => {
+// The database schema is provisioned separately; authenticate without changing it.
+sequelize.authenticate().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
   });
+}).catch((err) => {
+  console.error('Unable to connect to the database:', err);
+  process.exitCode = 1;
 });
