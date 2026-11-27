@@ -14,6 +14,9 @@ const { sequelize, User, Event, Photo } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 // Security & parsing middleware (CSP disabled so Tailwind CDN & inline scripts run smoothly in prototype)
 app.use(helmet({ contentSecurityPolicy: false }));
