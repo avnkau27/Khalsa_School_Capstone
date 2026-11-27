@@ -75,7 +75,7 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 CREATE DATABASE khalsa_school_db;
 ```
 
-Run your updated MySQL schema script against `khalsa_school_db` before starting the server. The app expects the six tables (`users`, `events`, `uploadBatches`, `photos`, `flyers`, and `langarBookings`) to exist and will not create or alter them. Assign roles through a trusted database/admin process; the app does not allow users to change their own roles.
+Run your updated MySQL schema script against `khalsa_school_db` before starting the server. The app expects the six tables (`users`, `events`, `uploadBatches`, `photos`, `flyers`, and `langarBookings`) to exist and will not create or alter them. Assign roles through a trusted database/admin process; the app does not allow users to change their own roles yet.
 
 ### 3. Get Your Cloudflare R2 Credentials
 
