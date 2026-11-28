@@ -14,16 +14,17 @@ const { sequelize, User, Event, Photo } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
 
 // Security & parsing middleware (CSP disabled so Tailwind CDN & inline scripts run smoothly in prototype)
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(express.json());
 
 // Session & Passport Google OAuth 2.0 setup
+app.set('trust proxy', 1);
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -84,7 +85,7 @@ app.use('/vendor', express.static('node_modules'));
 const s3 = new S3Client({
   region: 'auto',
   endpoint: process.env.S3_ENDPOINT,
-  forcePathStyle: process.env.S3_ENDPOINT.includes('localhost'),
+  forcePathStyle: (process.env.S3_ENDPOINT || '').includes('localhost'),
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY_ID,
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
